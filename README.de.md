@@ -1,6 +1,6 @@
 # ⚙️ Bash Template Funktionsaufrufer
 
-![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
+[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/Marcel-Graefen/Bash-Call-Template-Function/releases/tag/0.0.1)
 [![English](https://img.shields.io/badge/Sprache-English-blue)](./README.md)
 ![GitHub last commit](https://img.shields.io/github/last-commit/Marcel-Graefen/Bash-Call-Template-Function)
 [![Autor](https://img.shields.io/badge/Autor-Marcel%20Gr%C3%A4fen-green.svg)](#-autor--kontakt)
