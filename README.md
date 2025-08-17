@@ -2,10 +2,9 @@
 
 ![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
 [![German](https://img.shields.io/badge/Language-German-blue)](./README.de.md)
-![GitHub last commit](https://img.shields.io/github/last-commit/Marcel-Graefen/Bash-Template-Function-Caller)
+![GitHub last commit](https://img.shields.io/github/last-commit/Marcel-Graefen/Bash-Call-Template-Function)
 [![Author](https://img.shields.io/badge/author-Marcel%20Gr%C3%A4fen-green.svg)](#-author--contact)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
-![](https://komarev.com/ghpvc/?username=Marcel-Graefen)
 
 A lightweight Bash utility for dynamically resolving and executing "template" functions based on a given base name or a complete function name, with optional suffix handling and argument forwarding.
 

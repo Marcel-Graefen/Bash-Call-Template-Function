@@ -2,10 +2,9 @@
 
 ![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)
 [![English](https://img.shields.io/badge/Sprache-English-blue)](./README.md)
-![GitHub letzter Commit](https://img.shields.io/github/last-commit/Marcel-Graefen/Bash-Template-Function-Caller)
+![GitHub last commit](https://img.shields.io/github/last-commit/Marcel-Graefen/Bash-Call-Template-Function)
 [![Autor](https://img.shields.io/badge/Autor-Marcel%20Gr%C3%A4fen-green.svg)](#-autor--kontakt)
 [![Lizenz](https://img.shields.io/badge/Lizenz-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
-![](https://komarev.com/ghpvc/?username=Marcel-Graefen)
 
 Ein leichtgewichtiges Bash-Tool zum dynamischen Ermitteln und Ausführen von „Template“-Funktionen – entweder anhand eines vollständigen Funktionsnamens oder durch Kombination eines Basisnamens mit einem Suffix – inklusive Argumentweitergabe.
 
