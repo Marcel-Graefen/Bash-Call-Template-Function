@@ -1,173 +1,159 @@
-# ⚙️ Bash Template Function Caller
+# 📋 Bash Function: Function Call Manager
 
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/Marcel-Graefen/Bash-Call-Template-Function/releases/tag/0.0.1)
 [![German](https://img.shields.io/badge/Language-German-blue)](./README.de.md)
-![GitHub last commit](https://img.shields.io/github/last-commit/Marcel-Graefen/Bash-Call-Template-Function)
-[![Author](https://img.shields.io/badge/author-Marcel%20Gr%C3%A4fen-green.svg)](#-author--contact)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-1.0.0_beta.01-blue.svg)](./Versions/v1.0.0-beta.01/README.md)
 
-A lightweight Bash utility for dynamically resolving and executing "template" functions based on a given base name or a complete function name, with optional suffix handling and argument forwarding.
+`function_call_manager` is a Bash function for **dynamic function invocation with parameter passing**, error handling, and global JSON-based result storage.
 
----
-
-## 📚 Table of Contents
-
-  * [✨ Features](#-features)
-  * [⚙️ Requirements](#%EF%B8%8F-requirements)
-  * [📦 Installation](#-installation)
-  * [🚀 Usage](#-usage)
-      * [Full template name](#1-full-template-name)
-      * [Base name + suffix](#2-base-name--suffix)
-      * [Passing multiple arguments](#3-passing-multiple-arguments)
-      * [Template not found warning](#4-template-not-found-warning)
-      * [Suppressing warnings](#5-suppressing-warnings)
-  * [📌 API Reference](#-api-reference)
-      * [`call_template_funktion`](#call_template_funktion)
-  * [👤 Author & Contact](#-author--contact)
-  * [🤖 Generation Notice](#-generation-notice)
-  * [📜 License](#-license)
+> ⚠️ Version **1.0.0-beta.01** is **not backward compatible** with previous implementations.
 
 ---
 
-## ✨ Features
+## 🚀 Table of Contents
 
-* **Dynamic Template Resolution:** Automatically detects whether the provided name is a complete template function or needs a suffix appended.
-* **Argument Forwarding:** Passes all additional arguments directly to the resolved function.
-* **Optional Warnings:** Warns when a template is missing, with the ability to suppress warnings via a global flag.
-* **Minimal Overhead:** Simple Bash-only solution with no external dependencies.
-* **Plugin-Friendly:** Ideal for modular or pluggable Bash architectures.
+* [🛠️ Features](#-features)
+* [⚙️ Requirements](#-requirements)
+* [📦 Installation](#-installation)
+* [📌 Usage](#-usage)
+
+  * [💡 Single Function Call](#-single-function-call)
+  * [📦 Multiple Functions](#-multiple-functions)
+  * [📊 Output & jq Extraction](#-output--jq-extraction)
+* [📌 API Reference](#-api-reference)
+* [🗂️ Changelog](#-changelog)
+* [🤖 Generation Note](#-generation-note)
+
+---
+
+## 🛠️ Features
+
+* 🎯 **Dynamic Function Calls:** Call functions with parameters in JSON format.
+* ⚡ **Error Handling:** Abort on function error if `--on-func-error` is set.
+* 💾 **Global Storage:** Results stored as JSON in a global variable.
+* 🔄 **Multiple Functions:** Call multiple functions sequentially in one execution.
+* 💡 **Parameter Parsing:** Supports flags, positional arguments, and boolean flags.
+* 🔧 **jq Integration:** Parameters and outputs automatically converted to JSON.
 
 ---
 
 ## ⚙️ Requirements
 
-* **Bash** version 4.0 or newer.
+* 🐚 Bash ≥ 4.3
+* `jq` installed
 
 ---
 
 ## 📦 Installation
 
-Simply source the file containing the function into your Bash script:
-
 ```bash
 #!/usr/bin/env bash
-
-# Load the template function caller
-source "/path/to/template_function_caller.sh"
-
-# Your script logic here...
-````
+source "/path/to/function_call_manager.sh"
+```
 
 ---
 
-## 🚀 Usage
+## 📌 Usage
 
-> [!note] If `$1` already contains the full function name including `__temp_ (e.g., hello__temp_upper)`, all other arguments ($@ from the second parameter onward) are passed unchanged to that function.
-
-### **1. Full template name**
+### 💡 Single Function Call
 
 ```bash
-hello__temp_upper() {
-  echo "${1^^}"
+function_call_manager -f "my_function --param1 value1 --flag" -o result_var
+```
+
+**Explanation:**
+Calls `my_function` with parameters. The output is stored as JSON in the global variable `result_var`.
+
+---
+
+### 📦 Multiple Functions
+
+```bash
+function_call_manager \
+  -f "func_a --x 1" \
+  -f "func_b --y 2 --z 3" \
+  -o results
+```
+
+**Explanation:**
+Calls `func_a` and `func_b` sequentially. The global variable `results` contains JSON results of all functions.
+
+---
+
+### 📊 Output & jq Extraction
+
+Suppose `results` contains:
+
+```json
+{
+  "func_a": {
+    "callback": [
+      {
+        "arg0": "1",
+        "--flag": true
+      }
+    ],
+    "return": 0
+  },
+  "func_b": {
+    "callback": [
+      {
+        "arg0": "2",
+        "arg1": "3"
+      }
+    ],
+    "return": 0
+  }
 }
-
-call_template_funktion "hello__temp_upper" "world"
-# Output: WORLD
 ```
 
----
-
-### **2. Base name + suffix**
+**Extract values using `jq -r`:**
 
 ```bash
-greet__temp_formal() {
-  echo "Good day, $1."
-}
+# Single value from func_a
+echo "$results" | jq -r '.func_a.callback[0].arg0'
+# Output: 1
 
-call_template_funktion "greet" "formal" "Marcel"
-# Output: Good day, Marcel.
-```
+# Boolean flag from func_a
+echo "$results" | jq -r '.func_a.callback[0]["--flag"]'
+# Output: true
 
----
+# Return code from func_b
+echo "$results" | jq -r '.func_b.return'
+# Output: 0
 
-### **3. Passing multiple arguments**
-
-```bash
-sum__temp_calc() {
-  local total=0
-  for num in "$@"; do
-    (( total += num ))
-  done
-  echo "$total"
-}
-
-call_template_funktion "sum" "calc" 3 5 7
-# Output: 15
-```
-
----
-
-### **4. Template not found warning**
-
-```bash
-SHOW_WARNING=true
-call_template_funktion "unknown" "template" "test"
-# Output: ⚠️ WARNING: The Template: unknown__temp_template not found!
-# Exit code: 2
-```
-
----
-
-### **5. Suppressing warnings**
-
-```bash
-SHOW_WARNING=false
-call_template_funktion "unknown" "template" "test"
-# No output
-# Exit code: 2
+# All callback objects from func_b
+echo "$results" | jq -r '.func_b.callback[] | @json'
+# Output: {"arg0":"2","arg1":"3"}
 ```
 
 ---
 
 ## 📌 API Reference
 
-### `call_template_funktion`
+| Description                | Argument / Alias         | Optional | Multiple | Type   |
+| -------------------------- | ------------------------ | -------- | -------- | ------ |
+| Function(s) to call        | `-f` / `--function`      | ❌        | ✅        | String |
+| Target variable for output | `-o` / `--output`        | ❌        | ❌        | String |
+| Enable error abort         | `-e` / `--on-func-error` | ✅        | ❌        | Flag   |
+| Parameter JSON             | automatic                | –        | –        | JSON   |
 
-Dynamically resolves and calls a template function.
-
-**Arguments:**
-
-* `$1` — Template name (full name including `__temp_` or base name without suffix)
-* `$2` — Template suffix (used only if `$1` does not already contain `__temp_`)
-* `$@` — Additional arguments passed to the template function
-
-**Output:**
-
-* Prints the output of the template function to stdout
-* Returns the exit code of the template function if found
-* Returns `2` if the function does not exist
-
-**Notes:**
-
-* If `$1` already contains `__temp_`, it is treated as the complete function name
-* If not, the function name is constructed as `<base_name>__temp_<suffix>`
-* Set `SHOW_WARNING="false"` to suppress warnings
+**Output:** JSON object stored in the global variable, e.g., `results_var`.
 
 ---
 
-## 👤 Author & Contact
+## 🗂️ Changelog
 
-* **Marcel Gräfen**
-* 📧 [info@mgraefen.com](mailto:info@mgraefen.com)
+**v1.0.0-beta.01**
+
+* New function `function_call_manager` replaces `call_template_funktion`.
+* JSON-based parameter parsing and output.
+* Support for boolean flags, multiple functions, and sequential execution.
+* jq-based result extraction.
+* ⚠️ **Not backward compatible**.
 
 ---
 
-## 🤖 Generation Notice
+## 🤖 Generation Note
 
-This project was developed with the help of an Artificial Intelligence (AI). The AI assisted in creating the script, comments, and documentation (README.md). The final result was reviewed and adjusted by me.
-
----
-
-## 📜 License
-
-[MIT License](LICENSE)
+This document was generated with AI assistance and manually reviewed for correctness.
