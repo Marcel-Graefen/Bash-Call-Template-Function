@@ -1,159 +1,316 @@
 # 📋 Bash Function: Function Call Manager
 
-[![German](https://img.shields.io/badge/Language-German-blue)](./README.de.md)
+[![Deutsch](https://img.shields.io/badge/Language-German-blue)](./README.de.md)
+[![Version](https://img.shields.io/badge/version-1.0.0_beta.02-blue.svg)](./Versions/v1.0.0-beta.01/README.md)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.0.0_beta.01-blue.svg)](./Versions/v1.0.0-beta.01/README.md)
+[![Bash](https://img.shields.io/badge/Bash-≥4.3-green.svg)]()
+[![jq](https://img.shields.io/badge/jq-required-orange.svg)]()
 
-`function_call_manager` is a Bash function for **dynamic function invocation with parameter passing**, error handling, and global JSON-based result storage.
-
-> ⚠️ Version **1.0.0-beta.01** is **not backward compatible** with previous implementations.
+`function_call_manager` is a Bash function for **dynamically calling functions with parameter passing**, error handling, and global return via JSON.
 
 ---
 
-## 🚀 Table of Contents
+## 📖 Table of Contents
 
-* [🛠️ Features](#-features)
+* [✨ Features & Capabilities](#-features--capabilities)
 * [⚙️ Requirements](#-requirements)
 * [📦 Installation](#-installation)
-* [📌 Usage](#-usage)
-
-  * [💡 Single Function Call](#-single-function-call)
-  * [📦 Multiple Functions](#-multiple-functions)
-  * [📊 Output & jq Extraction](#-output--jq-extraction)
-* [📌 API Reference](#-api-reference)
-* [🗂️ Changelog](#-changelog)
-* [🤖 Generation Note](#-generation-note)
+* [🚀 Quick Start](#-quick-start)
+  * [📚 Detailed Usage](#-detailed-usage)
+  * [⚡ API Reference](#-api-reference)
+  * [🔧 Parameter Format](#-parameter-format)
+  * [❌ Error Handling](#-error-handling)
+  * [🔄 Return Codes](#-return-codes)
+  * [⚠️ Limitations](#-limitations)
+  * [💡 Best Practices](#-best-practices)
+  * [🐛 Troubleshooting](#-troubleshooting)
+* [🤖 Creation Note](#-creation-note)
+* [📜 License](#-license)
 
 ---
 
-## 🛠️ Features
+## ✨ Features & Capabilities
 
-* 🎯 **Dynamic Function Calls:** Call functions with parameters in JSON format.
-* ⚡ **Error Handling:** Abort on function error if `--on-func-error` is set.
-* 💾 **Global Storage:** Results stored as JSON in a global variable.
-* 🔄 **Multiple Functions:** Call multiple functions sequentially in one execution.
-* 💡 **Parameter Parsing:** Supports flags, positional arguments, and boolean flags.
-* 🔧 **jq Integration:** Parameters and outputs automatically converted to JSON.
+| Icon | Feature | Description |
+|------|---------|-------------|
+| 🎯 | Dynamic Calls | Call functions with JSON parameters |
+| ⚡ | Error Handling | Optional abort on function errors |
+| 💾 | Global Storage | Store results as JSON in variable |
+| 🔄 | Multiple Functions | Multiple functions in one call |
+| 🏷️ | Parameter Parsing | Flags, positional arguments, boolean flags |
+| 🔧 | jq Integration | Automatic JSON processing |
+| 📊 | Detailed Returns | Return codes, parameters, output |
 
 ---
 
 ## ⚙️ Requirements
 
-* 🐚 Bash ≥ 4.3
-* `jq` installed
+**Prerequisites:**
+- 🐚 **Bash ≥ 4.3**
+- 📦 **jq** installed:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install jq
+
+# macOS
+brew install jq
+
+# CentOS/RHEL
+sudo yum install jq
+```
 
 ---
 
 ## 📦 Installation
 
+**Option 1: Define directly in script**
 ```bash
 #!/usr/bin/env bash
+
+# Insert function
+function_call_manager() {
+  # [Insert complete function code here]
+}
+```
+
+**Option 2: Include as separate file**
+```bash
 source "/path/to/function_call_manager.sh"
 ```
 
 ---
 
-## 📌 Usage
+## 🚀 Quick Start
 
-### 💡 Single Function Call
-
+**1. Define function:**
 ```bash
-function_call_manager -f "my_function --param1 value1 --flag" -o result_var
-```
-
-**Explanation:**
-Calls `my_function` with parameters. The output is stored as JSON in the global variable `result_var`.
-
----
-
-### 📦 Multiple Functions
-
-```bash
-function_call_manager \
-  -f "func_a --x 1" \
-  -f "func_b --y 2 --z 3" \
-  -o results
-```
-
-**Explanation:**
-Calls `func_a` and `func_b` sequentially. The global variable `results` contains JSON results of all functions.
-
----
-
-### 📊 Output & jq Extraction
-
-Suppose `results` contains:
-
-```json
-{
-  "func_a": {
-    "callback": [
-      {
-        "arg0": "1",
-        "--flag": true
-      }
-    ],
-    "return": 0
-  },
-  "func_b": {
-    "callback": [
-      {
-        "arg0": "2",
-        "arg1": "3"
-      }
-    ],
-    "return": 0
-  }
+hello_world() {
+  local params="$1"
+  local name=$(echo "$params" | jq -r '.name // .arg0 // "World"')
+  echo "{\"message\": \"Hello, $name!\"}"
+  return 0
 }
 ```
 
-**Extract values using `jq -r`:**
-
+**2. Call function:**
 ```bash
-# Single value from func_a
-echo "$results" | jq -r '.func_a.callback[0].arg0'
-# Output: 1
+function_call_manager -f "hello_world --name Bash" -o result
+```
 
-# Boolean flag from func_a
-echo "$results" | jq -r '.func_a.callback[0]["--flag"]'
-# Output: true
-
-# Return code from func_b
-echo "$results" | jq -r '.func_b.return'
-# Output: 0
-
-# All callback objects from func_b
-echo "$results" | jq -r '.func_b.callback[] | @json'
-# Output: {"arg0":"2","arg1":"3"}
+**3. Show result:**
+```bash
+echo "$result" | jq .
 ```
 
 ---
 
-## 📌 API Reference
+## 📚 Detailed Usage
 
-| Description                | Argument / Alias         | Optional | Multiple | Type   |
-| -------------------------- | ------------------------ | -------- | -------- | ------ |
-| Function(s) to call        | `-f` / `--function`      | ❌        | ✅        | String |
-| Target variable for output | `-o` / `--output`        | ❌        | ❌        | String |
-| Enable error abort         | `-e` / `--on-func-error` | ✅        | ❌        | Flag   |
-| Parameter JSON             | automatic                | –        | –        | JSON   |
+### 💡 Single Function Call
+```bash
+function_call_manager -f "my_function --param1 value1 --flag" -o result
+```
 
-**Output:** JSON object stored in the global variable, e.g., `results_var`.
+### 📦 Multiple Functions
+```bash
+function_call_manager \
+  -f "function_a --x 1" \
+  -f "function_b --y 2" \
+  -o results
+```
+
+### 🎯 Complex Example
+```bash
+# Define functions
+calculate() {
+  local params="$1"
+  local a=$(echo "$params" | jq -r '.a // .arg0 // 0')
+  local b=$(echo "$params" | jq -r '.b // .arg1 // 0')
+  echo "{\"result\": $((a + b))}"
+  return 0
+}
+
+# Call with different parameters
+function_call_manager \
+  -f "calculate --a 10 --b 5" \
+  -f "calculate 20 30" \
+  -o results
+
+# Read results
+echo "$results" | jq .
+```
 
 ---
 
-## 🗂️ Changelog
+## ⚡ API Reference
 
-**v1.0.0-beta.01**
+### 📋 Command Line Parameters
 
-* New function `function_call_manager` replaces `call_template_funktion`.
-* JSON-based parameter parsing and output.
-* Support for boolean flags, multiple functions, and sequential execution.
-* jq-based result extraction.
-* ⚠️ **Not backward compatible**.
+| Parameter | Alias | Description | Optional | Multiple |
+|-----------|-------|-------------|----------|----------|
+| `-f` | `--function` | Call function | ❌ | ✅ |
+| `-o` | `--output` | Target variable | ❌ | ❌ |
+| `-e` | `--on-func-error` | Error abort | ✅ | ❌ |
+
+### 🏷️ Function Syntax
+```
+"functionname [parameters]"
+```
+
+**Examples:**
+- `"my_function"`
+- `"my_function arg1 arg2"`
+- `"my_function --param value --flag"`
+- `"my_function -a value -b"`
 
 ---
 
-## 🤖 Generation Note
+## 🔧 Parameter Format
 
-This document was generated with AI assistance and manually reviewed for correctness.
+### 📋 Supported Parameter Types
+
+| Type | Example | JSON Output |
+|-----|----------|-------------|
+| 🔹 Positional | `"func arg1 arg2"` | `{"arg0": "arg1", "arg1": "arg2"}` |
+| 🔧 Named with value | `"func --param value"` | `{"--param": "value"}` |
+| ✅ Boolean Flag | `"func --flag"` | `{"--flag": true}` |
+| 🔢 Numeric values | `"func --number 42"` | `{"--number": 42}` |
+
+### 🎯 Mixed Parameters
+```bash
+# Becomes: {"arg0": "file.txt", "--output": "result.json", "--force": true}
+"process file.txt --output result.json --force"
+```
+
+---
+
+## ❌ Error Handling
+
+### 🔄 Default Behavior
+```bash
+function_call_manager -f "faulty_function" -o result
+# Continues running, return code 0
+```
+
+### ⚡ With Error Abort
+```bash
+function_call_manager -f "faulty_function" -e -o result
+# Aborts on error, return code = function return code
+```
+
+### 📋 Error Output Format
+```json
+{
+  "function": "functionname",
+  "payload": {"parameter": "value"},
+  "output": "Error message",
+  "return": 127
+}
+```
+
+---
+
+## 🔄 Return Codes
+
+| Code | Meaning | Description |
+|------|-----------|-------------|
+| 🟢 0 | Success | Everything successful |
+| 🔴 1 | General error | jq missing, no parameters |
+| 🔴 2 | Function doesn't exist | Function not found |
+| 🔴 N | Function error | Return code of failed function |
+
+---
+
+## ⚠️ Limitations
+
+| Limitation | Description |
+|---------------|-------------|
+| 🔄 Global functions | Only globally available functions |
+| 📏 Parameter limits | Bash-typical limits |
+| 📊 JSON output | Recommended for best results |
+| 🌍 Global variables | Overwrites target variable |
+| ⏩ Sequential | No parallel processing |
+
+---
+
+## 💡 Best Practices
+
+### 🏗️ Recommended Function Structure
+```bash
+example_function() {
+  local params="$1"
+
+  # Extract parameters
+  local param1=$(echo "$params" | jq -r '.param1 // .arg0 // "default"')
+
+  # Always output JSON
+  echo "{\"status\": \"success\", \"data\": \"$param1\"}"
+
+  return 0
+}
+```
+
+### 🛡️ Error Handling
+```bash
+safe_function() {
+  local params="$1"
+
+  # Validation
+  if ! validate_input "$params"; then
+    echo "{\"error\": \"Invalid input\"}"
+    return 1
+  fi
+
+  # Logic
+  echo "{\"success\": true}"
+  return 0
+}
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### ❌ Common Problems
+
+**1. jq not installed**
+```bash
+sudo apt-get install jq
+```
+
+**2. Function not found**
+```bash
+declare -f functionname  # Check if function exists
+```
+
+**3. Parameters not recognized**
+- Flags must start with `-`
+- Positional parameters without `-`
+
+**4. JSON parsing errors**
+- Always output valid JSON
+- Non-JSON gets wrapped as string
+
+### 🔍 Debugging
+```bash
+# Debug mode
+set -x
+function_call_manager -f "test" -o result
+set +x
+
+# Validate JSON
+echo "$result" | jq . >/dev/null && echo "✅ Valid JSON" || echo "❌ Invalid JSON"
+```
+
+---
+
+## 🤖 Creation Note
+
+This project was created with the assistance of Artificial Intelligence (AI). The AI helped with the script, comments, and documentation (README.md). The final result was reviewed and adapted by me.
+
+---
+
+## 📜 License
+
+[MIT License](LICENSE)

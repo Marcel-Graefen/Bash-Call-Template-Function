@@ -6,13 +6,13 @@
 # This Bash function dynamically determines a template function’s name (using either a full name or a base name plus suffix), passes along any extra arguments, and invokes it if it exists, otherwise showing an optional warning.
 #
 # @author      : Marcel Gräfen
-# @version     : 1.0.0-Beta.01
+# @version     : 1.0.0-Beta.02
 # @date        : 2025-09-19
 #
 # @requires    : Bash 4.0+
 # @requires    : jq
 #
-# @see         : https://github.com/Marcel-Graefen/Bash-Call-Template-Function.git
+# @see         : https://github.com/Marcel-Graefen/Bash-Function-Call-Manager.git
 #
 # @copyright   : Copyright (c) 2025 Marcel Gräfen
 # @license     : MIT License
@@ -22,7 +22,7 @@
 
 #---------------------- FUNCTION: function_call_manager ----------------------
 #
-# @version 1.0.0-beta.01
+# @version 1.0.0-beta.02
 #
 # Dynamically executes one or more Bash functions with structured parameter parsing.
 # Supports optional immediate exit on function error and captures output as JSON.
@@ -71,7 +71,7 @@ function_call_manager() {
 
   # --------- Check parameters ---------
   if [[ $# -eq 0 ]]; then
-    echo "❌ [ERROR] No parameters provided"
+    echo "❌ [ERROR] No parameters provided" >&2
     return 1
   fi
 
@@ -83,10 +83,10 @@ function_call_manager() {
   # --------- Parse CLI arguments ---------
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -f|--function) function_strings+=("$2"); shift 2 ;;
-      -o|--output) output_var="$2"; shift 2 ;;
-      -e|--on-func-error) on_func_error=true; shift ;;
-      *) echo "❌ Unknown option: $1" >&2; return 1 ;;
+      -f|--function)      function_strings+=("$2"); shift 2 ;;
+      -o|--output)        output_var="$2";          shift 2 ;;
+      -e|--on-func-error) on_func_error=true;       shift   ;;
+      *)  echo "❌ Unknown option: $1" >&2; return 1        ;;
     esac
   done
 
@@ -106,6 +106,7 @@ function_call_manager() {
 
   # --------- Execute each provided function ---------
   for func_string in "${function_strings[@]}"; do
+    # Extract function name and parameters
     local func_name="${func_string%% *}"
     local func_params="${func_string#$func_name}"
     func_params="${func_params#" "}"
@@ -117,47 +118,79 @@ function_call_manager() {
     fi
 
     # --------- Build parameter JSON ---------
-    declare -A param_json=()
-    read -r -a params <<< "$func_params"
-    local arg_index=0
-    local idx=0
-    while [[ $idx -lt ${#params[@]} ]]; do
-      token="${params[$idx]}"
-      if [[ "$token" == -* ]]; then
-        key="$token"
-        next_idx=$((idx+1))
-        if [[ $next_idx -lt ${#params[@]} && "${params[$next_idx]}" != -* ]]; then
-          param_json["$key"]="${params[$next_idx]}"
-          idx=$((idx+1))  # skip value
+    local param_json_str='{}'
+    if [[ -n "$func_params" ]]; then
+      read -r -a params <<< "$func_params"
+      local arg_index=0
+      local idx=0
+
+      # Parse each parameter token
+      while [[ $idx -lt ${#params[@]} ]]; do
+        token="${params[$idx]}"
+
+        # Handle flags (starting with -)
+        if [[ "$token" == -* ]]; then
+          # Keep original flag name including all dashes
+          key="$token"
+          next_idx=$((idx+1))
+
+          # Check if next token is a value (not another flag)
+          if [[ $next_idx -lt ${#params[@]} && "${params[$next_idx]}" != -* ]]; then
+            value="${params[$next_idx]}"
+
+            # Handle numeric values vs strings
+            if [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+              param_json_str=$(jq --arg k "$key" --argjson v "$value" '. + {($k): $v}' <<< "$param_json_str")
+            else
+              param_json_str=$(jq --arg k "$key" --arg v "$value" '. + {($k): $v}' <<< "$param_json_str")
+            fi
+            idx=$((idx+1)) # Skip value token
+          else
+            # Boolean flag (no value following)
+            param_json_str=$(jq --arg k "$key" '. + {($k): true}' <<< "$param_json_str")
+          fi
         else
-          param_json["$key"]=true  # boolean flag
+          # Positional argument (not a flag)
+          if [[ "$token" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+            param_json_str=$(jq --arg k "arg$arg_index" --argjson v "$token" '. + {($k): $v}' <<< "$param_json_str")
+          else
+            param_json_str=$(jq --arg k "arg$arg_index" --arg v "$token" '. + {($k): $v}' <<< "$param_json_str")
+          fi
+          arg_index=$((arg_index+1))
         fi
-      else
-        param_json["arg$arg_index"]="$token"
-        arg_index=$((arg_index+1))
-      fi
-      idx=$((idx+1))
-    done
+        idx=$((idx+1))
+      done
+    fi
 
-    # --------- Convert parameter array to JSON ---------
-    local param_json_str="{}"
-    for k in "${!param_json[@]}"; do
-      val="${param_json[$k]}"
-      param_json_str=$(echo "$param_json_str" | jq --arg k "$k" --argjson v "$(jq -n --arg vv "$val" '$vv')" '. + {($k): $v}')
-    done
-
-    # --------- Execute function ---------
-    func_output=$("$func_name" "$param_json_str")
+    # --------- Execute function with JSON parameters ---------
+    func_output=$("$func_name" "$param_json_str" 2>&1)
     func_return=$?
 
-    # --------- Parse function output JSON ---------
-    func_output_json=$(echo "$func_output" | jq . 2>/dev/null || jq -n --arg out "$func_output" '$out')
+    # --------- Parse function output ---------
+    local func_output_json
+    if func_output_json=$(echo "$func_output" | jq . 2>/dev/null); then
+      # Output is valid JSON, keep as is
+      :
+    else
+      # Output is not JSON, wrap as string
+      func_output_json=$(jq -n --arg out "$func_output" '$out')
+    fi
 
-    # --------- Add callback to results ---------
-    results_json=$(jq --arg fn "$func_name" \
-      'if .[$fn]==null then .[$fn]={"callback":[],"return":0} else . end' <<< "$results_json")
-    results_json=$(jq --arg fn "$func_name" --argjson obj "$param_json_str" --argjson rc "$func_return" \
-      '.[$fn].callback = [$obj] | .[$fn].return = $rc' <<< "$results_json")
+    # --------- Update results JSON ---------
+    # Check if function already exists in results
+    if ! echo "$results_json" | jq --arg fn "$func_name" '.[$fn]' | grep -q "null"; then
+      # Append to existing callback array
+      results_json=$(jq --arg fn "$func_name" --argjson obj "$param_json_str" \
+        '.[$fn].callback += [$obj]' <<< "$results_json")
+    else
+      # Create new function entry
+      results_json=$(jq --arg fn "$func_name" --argjson obj "$param_json_str" \
+        '.[$fn] = {"callback": [$obj], "return": 0}' <<< "$results_json")
+    fi
+
+    # Update return code
+    results_json=$(jq --arg fn "$func_name" --argjson rc "$func_return" \
+      '.[$fn].return = $rc' <<< "$results_json")
 
     # --------- Handle function error if enabled ---------
     if [[ $func_return -ne 0 && "$on_func_error" == "true" ]]; then
@@ -173,17 +206,41 @@ function_call_manager() {
           return: $rc
         }')
 
-      [[ -n "$output_var" ]] && declare -g "$output_var"="$results_json"
+      declare -g "$output_var"="$results_json"
       echo "$error_obj" >&2
-      exit $func_return
+      return $func_return
     fi
-
   done
 
-  # --------- Store results in output variable ---------
-  if [[ -n "$output_var" ]]; then
-    declare -g "$output_var"="$results_json"
-  fi
-
+  # --------- Store final results in output variable ---------
+  declare -g "$output_var"="$results_json"
   return 0
 }
+
+
+
+
+# # Test function
+# test_func() {
+#   local params="$1"
+#   echo "Received: $params" >&2
+#   echo '{"status": "success", "params": '"$params"'}'
+#   return 0
+# }
+
+# # Test function
+# test_func2() {
+#   local params="$1"
+#   echo "Received: $params" >&2
+#   echo '{"status": "success", "params": '"$params"'}'
+#   return 0
+# }
+
+# # Test call with 2-space indentation
+# function_call_manager \
+#   -f "test_func -v --verbose file.txt -n 42 hallo" \
+#   -f "test_func2 -v --verbose file.txt -n 42 hallo" \
+#   -o result
+
+# echo "Test result:"
+# echo "$result" | jq .
